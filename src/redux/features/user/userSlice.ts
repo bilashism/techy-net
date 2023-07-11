@@ -1,7 +1,10 @@
 import { auth } from '@/lib/firebase';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 
 interface IUserState {
   user: {
@@ -30,10 +33,24 @@ export const createUser = createAsyncThunk(
     return data.user.email;
   }
 );
+export const loginUser = createAsyncThunk(
+  'user/loginUser',
+  async ({ email, password }: ICredentials) => {
+    const data = await signInWithEmailAndPassword(auth, email, password);
+    return data.user.email;
+  }
+);
 export const userSlice = createSlice({
   name: 'user',
   initialState,
-  reducers: {},
+  reducers: {
+    setUser: (state, action: PayloadAction<string | null>) => {
+      state.user.email = action.payload;
+    },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(createUser.pending, (state) => {
@@ -54,7 +71,26 @@ export const userSlice = createSlice({
         state.error = action.error.message as string;
         state.user.email = null;
       });
+    builder
+      .addCase(loginUser.pending, (state) => {
+        state.isLoading = true;
+        state.isError = false;
+        state.error = null;
+        state.user.email = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isError = false;
+        state.error = null;
+        state.user.email = action.payload;
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.error = action.error.message as string;
+        state.user.email = null;
+      });
   },
 });
-// export const {   } = cartSlice.actions;
+export const { setUser, setLoading } = userSlice.actions;
 export const userReducer = userSlice.reducer;
